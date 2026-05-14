@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 坦克大战 - 双人对战（可配置版）</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --panel-bg: #16213e;
+            --text: #e0e0e0;
+            --gold: #f0c040;
+            --player1: #4da6ff;
+            --player2: #ff5e5e;
+            --accent: #0f3460;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow-y: auto;
+            padding: 20px;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .game-wrapper {
+            background: var(--panel-bg);
+            border-radius: 20px;
+            padding: 20px 28px 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            max-width: 95vw;
+        }
+
+        .game-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .game-title {
+            font-size: 1.7em;
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #f0c040, #ff8c00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .score-panel {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .player-score {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent);
+            border-radius: 30px;
+            padding: 6px 16px;
+            font-weight: 700;
+            font-size: 0.9em;
+            color: #fff;
+            letter-spacing: 1px;
+            border: 2px solid transparent;
+        }
+        .player-score.p1 {
+            border-color: var(--player1);
+            box-shadow: 0 0 14px rgba(77, 166, 255, 0.25);
+        }
+        .player-score.p2 {
+            border-color: var(--player2);
+            box-shadow: 0 0 14px rgba(255, 94, 94, 0.25);
+        }
+
+        .player-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .player-dot.p1 {
+            background: var(--player1);
+            box-shadow: 0 0 8px var(--player1);
+        }
+        .player-dot.p2 {
+            background: var(--player2);
+            box-shadow: 0 0 8px var(--player2);
+        }
+
+        .lives {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+        }
+        .heart {
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        .heart.lost {
+            opacity: 0.2;
+            transform: scale(0.7);
+            filter: grayscale(1);
+        }
+
+        canvas {
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+            max-width: 100%;
+            height: auto;
+            cursor: none;
+        }
+
+        .game-footer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            width: 100%;
+            color: #aaa;
+            font-size: 0.8em;
+        }
+
+        .key-hint {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75em;
+            color: #888;
+        }
+        .key-badge {
+            background: #2a2a3e;
+            color: #ddd;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-weight: 700;
+            font-size: 0.8em;
+            border: 1px solid #444;
+        }
+        .key-badge.fire {
+            background: #3e2a1a;
+            border-color: #f0c040;
+            color: #f0c040;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.8px;
+            transition: all 0.3s;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.85em;
+        }
+        .btn:hover {
+            background: #1a4a7a;
+            border-color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .winner-announce {
+            font-weight: 900;
+            font-size: 1em;
+            letter-spacing: 1px;
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+        .winner-announce.p1 {
+            color: var(--player1);
+        }
+        .winner-announce.p2 {
+            color: var(--player2);
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        /* 设置面板 */
+        .settings-toggle {
+            align-self: flex-end;
+            margin-bottom: -5px;
+            background: transparent;
+            border: 1px solid #444;
+            color: #ccc;
+            font-size: 0.8em;
+            padding: 4px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+        }
+        .settings-panel {
+            background: #0d1b2e;
+            border-radius: 16px;
+            padding: 16px 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            border: 1px solid #2e3a4e;
+            transition: all 0.3s;
+        }
+        .settings-panel.hidden {
+            display: none;
+        }
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #ccc;
+            font-size: 0.8em;
+        }
+        .setting-item label {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .setting-item input[type="number"] {
+            width: 60px;
+            background: #1a2a3e;
+            border: 1px solid #4a5a6e;
+            color: #fff;
+            padding: 4px 6px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .setting-item input[type="color"] {
+            width: 30px;
+            height: 26px;
+            border: 1px solid #4a5a6e;
+            border-radius: 6px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .apply-btn {
+            background: #e09f1c;
+            border: none;
+            color: #000;
+            font-weight: 700;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8em;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 800px) {
+            .game-wrapper {
+                padding: 12px 10px;
+            }
+            .settings-panel {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper">
+        <div class="game-header">
+            <span class="game-title">🎮 坦克大战</span>
+            <div class="score-panel">
+                <div class="player-score p1" id="scorePanel1">
+                    <span class="player-dot p1"></span> 玩家1
+                    <span class="lives" id="lives1"></span>
+                    🏆<span id="score1">0</span>
+                </div>
+                <div class="player-score p2" id="scorePanel2">
+                    <span class="player-dot p2"></span> 玩家2
+                    <span class="lives" id="lives2"></span>
+                    🏆<span id="score2">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置面板切换按钮 -->
+        <button class="settings-toggle" id="settingsToggle">⚙️ 自定义设置</button>
+        <!-- 设置面板 -->
+        <div class="settings-panel hidden" id="settingsPanel">
+            <div class="setting-item">
+                <label>❤️ 生命值</label>
+                <input type="number" id="inputLives" value="5" min="1" max="10" step="1">
+            </div>
+            <div class="setting-item">
+                <label>🏆 获胜分数</label>
+                <input type="number" id="inputWinScore" value="5" min="1" max="20" step="1">
+            </div>
+            <div class="setting-item">
+                <label>🔵 P1颜色</label>
+                <input type="color" id="inputColor1" value="#4da6ff">
+            </div>
+            <div class="setting-item">
+                <label>🔴 P2颜色</label>
+                <input type="color" id="inputColor2" value="#ff5e5e">
+            </div>
+            <button class="apply-btn" id="applySettings">✅ 应用并重启</button>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="game-footer">
+            <div class="key-hint">
+                <span style="color:var(--player1);">● P1</span> WASD 移动 | <span class="key-badge fire">空格</span> 射击
+            </div>
+            <div class="key-hint">
+                <span style="color:var(--player2);">● P2</span> 方向键 | <span class="key-badge fire">Enter</span> 射击
+            </div>
+            <button class="btn" id="btnRestart">🔄 重新开始</button>
+            <span id="winnerMsg" class="winner-announce"></span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const COLS = 20;
+            const ROWS = 14;
+            const CELL = 40;
+            const WIDTH = COLS * CELL;
+            const HEIGHT = ROWS * CELL;
+            canvas.width = WIDTH;
+            canvas.height = HEIGHT;
+
+            // 地图模板
+            const mapTemplate = [
+                [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+                [2, 0, 1, 1, 0, 0, 1, 0, 0, 2, 2, 0, 0, 1, 0, 0, 1, 1, 0, 2],
+                [2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2],
+                [2, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 2],
+                [2, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 2],
+                [2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2],
+                [2, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 2],
+                [2, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 2],
+                [2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2],
+                [2, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 2],
+                [2, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 2],
+                [2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2],
+                [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            ];
+            let mapData = [];
+
+            function resetMap() {
+                mapData = mapTemplate.map(row => [...row]);
+            }
+
+            // 可配置参数
+            let MAX_LIVES = 5;
+            let WIN_SCORE = 5;
+            let PLAYER1_COLOR = '#4da6ff';
+            let PLAYER1_BODY = '#2b6fb6';
+            let PLAYER2_COLOR = '#ff5e5e';
+            let PLAYER2_BODY = '#b83333';
+
+            const TANK_SPEED = 130;
+            const BULLET_SPEED = 340;
+            const FIRE_COOLDOWN = 0.55;
+            const RESPAWN_INVINCIBLE = 2.5;
+
+            let player1, player2, bullets = [],
+                particles = [],
+                gameOver = false,
+                winner = null;
+
+            function updateCSSColors() {
+                document.documentElement.style.setProperty('--player1', PLAYER1_COLOR);
+                document.documentElement.style.setProperty('--player2', PLAYER2_COLOR);
+            }
+
+            function getCellCenter(col, row) {
+                return { x: col * CELL + CELL / 2, y: row * CELL + CELL / 2 };
+            }
+
+            function worldToGrid(wx, wy) {
+                return { col: Math.floor(wx / CELL), row: Math.floor(wy / CELL) };
+            }
+
+            function isSolidTile(col, row) {
+                if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return true;
+                const t = mapData[row][col];
+                return t === 1 || t === 2;
+            }
+
+            function dist(x1, y1, x2, y2) {
+                return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+            }
+
+            class Particle {
+                constructor(x, y, color, life = 0.5) {
+                    this.x = x;
+                    this.y = y;
+                    this.vx = (Math.random() - 0.5) * 220;
+                    this.vy = (Math.random() - 0.5) * 220;
+                    this.life = life;
+                    this.maxLife = life;
+                    this.color = color;
+                    this.size = 2 + Math.random() * 5;
+                }
+                update(dt) { this.x += this.vx * dt;
+                    this.y += this.vy * dt;
+                    this.life -= dt; }
+                get alive() { return this.life > 0; }
+                draw(ctx) {
+                    const alpha = this.life / this.maxLife;
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            class Bullet {
+                constructor(x, y, dx, dy, owner) {
+                    this.x = x;
+                    this.y = y;
+                    this.dx = dx;
+                    this.dy = dy;
+                    this.owner = owner;
+                    this.alive = true;
+                    this.radius = 4;
+                }
+                update(dt) {
+                    const mx = this.dx * BULLET_SPEED * dt;
+                    const my = this.dy * BULLET_SPEED * dt;
+                    const nx = this.x + mx;
+                    const ny = this.y + my;
+                    const gx = worldToGrid(nx, this.y);
+                    if (isSolidTile(gx.col, gx.row)) { this.hitWall(gx.col, gx.row); return; }
+                    const gy = worldToGrid(nx, ny);
+                    if (isSolidTile(gy.col, gy.row)) { this.hitWall(gy.col, gy.row); return; }
+                    this.x = nx;
+                    this.y = ny;
+                    if (this.x < -10 || this.x > WIDTH + 10 || this.y < -10 || this.y > HEIGHT + 10) this.alive =
+                        false;
+                }
+                hitWall(col, row) {
+                    if (mapData[row][col] === 1) {
+                        mapData[row][col] = 0;
+                        const cx = col * CELL + CELL / 2,
+                            cy = row * CELL + CELL / 2;
+                        for (let i = 0; i < 10; i++) particles.push(new Particle(cx, cy, '#c8844a', 0.3));
+                    }
+                    this.alive = false;
+                }
+                checkTankHit(tank, owner) {
+                    if (!this.alive || tank.invincible > 0 || this.owner === owner) return false;
+                    if (dist(this.x, this.y, tank.x, tank.y) < 15 + this.radius) {
+                        this.alive = false;
+                        return true;
+                    }
+                    return false;
+                }
+                draw(ctx) {
+                    if (!this.alive) return;
+                    ctx.save();
+                    ctx.shadowColor = '#ffdd00';
+                    ctx.shadowBlur = 8;
+                    ctx.fillStyle = '#ffea00';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius * 0.55, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            class Tank {
+                constructor(x, y, color, bodyColor, owner) {
+                    this.x = x;
+                    this.y = y;
+                    this.color = color;
+                    this.bodyColor = bodyColor;
+                    this.owner = owner;
+                    this.dirX = 0;
+                    this.dirY = -1;
+                    this.alive = true;
+                    this.invincible = 0;
+                    this.fireCooldown = 0;
+                    this.lives = MAX_LIVES;
+                    this.score = 0;
+                    this.respawnX = x;
+                    this.respawnY = y;
+                }
+                setDirection(dx, dy) {
+                    if (dx !== 0 || dy !== 0) {
+                        const mag = Math.sqrt(dx * dx + dy * dy);
+                        this.dirX = dx / mag;
+                        this.dirY = dy / mag;
+                    }
+                }
+                update(dt) {
+                    if (this.invincible > 0) this.invincible -= dt;
+                    if (this.fireCooldown > 0) this.fireCooldown -= dt;
+                }
+                collidesWithWorld(cx, cy) {
+                    const pts = [
+                        [cx - 15, cy - 15],
+                        [cx + 15, cy - 15],
+                        [cx - 15, cy + 15],
+                        [cx + 15, cy + 15]
+                    ];
+                    for (const [px, py] of pts) {
+                        const g = worldToGrid(px, py);
+                        if (isSolidTile(g.col, g.row)) return true;
+                    }
+                    return false;
+                }
+                move(dx, dy, dt, other) {
+                    if (!this.alive) return;
+                    this.setDirection(dx, dy);
+                    const step = TANK_SPEED * dt;
+                    const nx = this.x + dx * step;
+                    if (!this.collidesWithWorld(nx, this.y) && !(other && other.alive && dist(nx, this.y, other.x,
+                            other.y) < 30)) {
+                        this.x = nx;
+                    }
+                    const ny = this.y + dy * step;
+                    if (!this.collidesWithWorld(this.x, ny) && !(other && other.alive && dist(this.x, ny, other.x,
+                            other.y) < 30)) {
+                        this.y = ny;
+                    }
+                    this.x = Math.min(Math.max(this.x, 15), WIDTH - 15);
+                    this.y = Math.min(Math.max(this.y, 15), HEIGHT - 15);
+                }
+                fire() {
+                    if (!this.alive || this.fireCooldown > 0) return null;
+                    this.fireCooldown = FIRE_COOLDOWN;
+                    return new Bullet(this.x + this.dirX * 20, this.y + this.dirY * 20, this.dirX, this.dirY, this
+                        .owner);
+                }
+                hit() {
+                    if (this.invincible > 0) return false;
+                    this.lives--;
+                    for (let i = 0; i < 18; i++) particles.push(new Particle(this.x, this.y, '#ff8800', 0.4));
+                    if (this.lives <= 0) { this.alive = false; return true; }
+                    this.respawn();
+                    return false;
+                }
+                respawn() {
+                    this.x = this.respawnX;
+                    this.y = this.respawnY;
+                    this.alive = true;
+                    this.invincible = RESPAWN_INVINCIBLE;
+                    this.dirX = 0;
+                    this.dirY = this.owner === 'p1' ? -1 : 1;
+                    this.fireCooldown = 0.3;
+                }
+                draw(ctx) {
+                    if (!this.alive) return;
+                    const alpha = (this.invincible > 0 && Math.floor(this.invincible * 10) % 2 === 0) ? 0.35 : 1;
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(Math.atan2(this.dirY, this.dirX) + Math.PI / 2);
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.fillRect(-15, -15, 30, 30);
+                    ctx.fillStyle = '#2a2a2a';
+                    ctx.fillRect(-15, -15, 5, 30);
+                    ctx.fillRect(10, -15, 5, 30);
+                    ctx.fillStyle = this.bodyColor;
+                    ctx.fillRect(-9, -12, 18, 24);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(-2, -18, 4, 14);
+                    ctx.restore();
+                    if (this.invincible > 0 && alpha > 0.5) {
+                        ctx.save();
+                        ctx.strokeStyle = '#ffffffcc';
+                        ctx.lineWidth = 2;
+                        ctx.shadowBlur = 10;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, 18, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            }
+
+            function initGame() {
+                resetMap();
+                bullets = [];
+                particles = [];
+                gameOver = false;
+                winner = null;
+                const p1Pos = getCellCenter(3, 2);
+                const p2Pos = getCellCenter(16, 11);
+                player1 = new Tank(p1Pos.x, p1Pos.y, PLAYER1_COLOR, PLAYER1_BODY, 'p1');
+                player1.lives = MAX_LIVES;
+                player2 = new Tank(p2Pos.x, p2Pos.y, PLAYER2_COLOR, PLAYER2_BODY, 'p2');
+                player2.lives = MAX_LIVES;
+                updateUI();
+            }
+
+            function updateUI() {
+                document.getElementById('lives1').innerHTML = Array.from({ length: MAX_LIVES }, (_, i) =>
+                    `<span class="heart${i >= (player1?.lives || 0) ? ' lost' : ''}">❤️</span>`).join('');
+                document.getElementById('lives2').innerHTML = Array.from({ length: MAX_LIVES }, (_, i) =>
+                    `<span class="heart${i >= (player2?.lives || 0) ? ' lost' : ''}">❤️</span>`).join('');
+                document.getElementById('score1').textContent = player1?.score || 0;
+                document.getElementById('score2').textContent = player2?.score || 0;
+                const msg = document.getElementById('winnerMsg');
+                if (gameOver) {
+                    msg.textContent = winner === 'p1' ? '🏆 玩家1 获胜！' : '🏆 玩家2 获胜！';
+                    msg.className = `winner-announce ${winner}`;
+                } else {
+                    msg.textContent = '';
+                    msg.className = 'winner-announce';
+                }
+            }
+
+            function checkWin() {
+                if (gameOver) return;
+                if ((player1?.score || 0) >= WIN_SCORE) { gameOver = true;
+                    winner = 'p1'; } else if ((player2?.score || 0) >= WIN_SCORE) { gameOver = true;
+                    winner = 'p2'; } else if (player1 && !player1.alive && player1.lives <= 0) { gameOver = true;
+                    winner = 'p2'; } else if (player2 && !player2.alive && player2.lives <= 0) { gameOver = true;
+                    winner = 'p1'; }
+                if (gameOver) updateUI();
+            }
+
+            const keys = {};
+            window.addEventListener('keydown', e => { keys[e.key] = true;
+                keys[e.code] = true; if (['Enter', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e
+                        .key)) e.preventDefault(); });
+            window.addEventListener('keyup', e => { keys[e.key] = false;
+                keys[e.code] = false; });
+
+            function getInput(player) {
+                let dx = 0,
+                    dy = 0,
+                    fire = false;
+                if (player === 'p1') {
+                    if (keys['w'] || keys['W']) dy = -1;
+                    if (keys['s'] || keys['S']) dy = 1;
+                    if (keys['a'] || keys['A']) dx = -1;
+                    if (keys['d'] || keys['D']) dx = 1;
+                    fire = keys[' '] || keys['Space'];
+                } else {
+                    if (keys['ArrowUp']) dy = -1;
+                    if (keys['ArrowDown']) dy = 1;
+                    if (keys['ArrowLeft']) dx = -1;
+                    if (keys['ArrowRight']) dx = 1;
+                    fire = keys['Enter'];
+                }
+                if (dx !== 0 || dy !== 0) { const m = Math.sqrt(dx * dx + dy * dy);
+                    dx /= m;
+                    dy /= m; }
+                return { dx, dy, fire };
+            }
+
+            function render() {
+                ctx.fillStyle = '#1e2a1e';
+                ctx.fillRect(0, 0, WIDTH, HEIGHT);
+                for (let r = 0; r < ROWS; r++)
+                    for (let c = 0; c < COLS; c++) {
+                        const t = mapData[r][c];
+                        const x = c * CELL,
+                            y = r * CELL;
+                        if (t === 1) { ctx.fillStyle = '#b87340';
+                            ctx.fillRect(x, y, CELL, CELL); } else if (t === 2) { ctx.fillStyle = '#6a6a7a';
+                            ctx.fillRect(x, y, CELL, CELL); }
+                    }
+                particles.forEach(p => p.draw(ctx));
+                bullets.forEach(b => b.draw(ctx));
+                if (player2) player2.draw(ctx);
+                if (player1) player1.draw(ctx);
+                if (gameOver) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 34px "PingFang SC"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(winner === 'p1' ? '玩家1获胜' : '玩家2获胜', WIDTH / 2, HEIGHT / 2);
+                }
+            }
+
+            let lastTime = performance.now();
+
+            function loop(now) {
+                let dt = (now - lastTime) / 1000;
+                if (dt > 0.1) dt = 0.016;
+                lastTime = now;
+                if (!gameOver) {
+                    const p1 = getInput('p1');
+                    const p2 = getInput('p2');
+                    if (player1?.alive) { player1.move(p1.dx, p1.dy, dt, player2); if (p1.fire) { const b = player1.fire(); if (
+                            b) bullets.push(b); } }
+                    if (player2?.alive) { player2.move(p2.dx, p2.dy, dt, player1); if (p2.fire) { const b = player2.fire(); if (
+                            b) bullets.push(b); } }
+                    player1?.update(dt);
+                    player2?.update(dt);
+                    for (const b of bullets) {
+                        if (!b.alive) continue;
+                        b.update(dt);
+                        if (player1 && b.checkTankHit(player1, 'p1')) { if (player1.hit() && player2) player2.score++;
+                            checkWin(); }
+                        if (player2 && b.checkTankHit(player2, 'p2')) { if (player2.hit() && player1) player1.score++;
+                            checkWin(); }
+                    }
+                    bullets = bullets.filter(b => b.alive);
+                    particles.forEach(p => p.update(dt));
+                    particles = particles.filter(p => p.alive);
+                    updateUI();
+                }
+                render();
+                if (gameOver && (keys['r'] || keys['R'])) { resetFullGame();
+                    keys['r'] = false; }
+                requestAnimationFrame(loop);
+            }
+
+            function resetFullGame() {
+                initGame();
+                updateCSSColors();
+                updateUI();
+            }
+
+            document.getElementById('btnRestart').addEventListener('click', resetFullGame);
+            window.addEventListener('keydown', e => { if (gameOver && (e.key === 'r' || e.key === 'R')) resetFullGame(); });
+
+            // 设置面板逻辑
+            const settingsPanel = document.getElementById('settingsPanel');
+            document.getElementById('settingsToggle').addEventListener('click', () => {
+                settingsPanel.classList.toggle('hidden');
+            });
+            document.getElementById('applySettings').addEventListener('click', () => {
+                const lives = parseInt(document.getElementById('inputLives').value, 10);
+                const winScore = parseInt(document.getElementById('inputWinScore').value, 10);
+                const color1 = document.getElementById('inputColor1').value;
+                const color2 = document.getElementById('inputColor2').value;
+                if (isNaN(lives) || lives < 1) return;
+                if (isNaN(winScore) || winScore < 1) return;
+                MAX_LIVES = lives;
+                WIN_SCORE = winScore;
+                PLAYER1_COLOR = color1;
+                PLAYER1_BODY = shadeColor(color1, -30);
+                PLAYER2_COLOR = color2;
+                PLAYER2_BODY = shadeColor(color2, -30);
+                updateCSSColors();
+                resetFullGame();
+                settingsPanel.classList.add('hidden');
+            });
+
+            function shadeColor(color, percent) {
+                let R, G, B;
+                if (color.startsWith('#')) {
+                    R = parseInt(color.substring(1, 3), 16);
+                    G = parseInt(color.substring(3, 5), 16);
+                    B = parseInt(color.substring(5, 7), 16);
+                } else return color;
+                R = Math.min(255, Math.max(0, R + percent));
+                G = Math.min(255, Math.max(0, G + percent));
+                B = Math.min(255, Math.max(0, B + percent));
+                return `#${((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1)}`;
+            }
+
+            function resizeCanvas() {
+                const maxWidth = Math.min(window.innerWidth - 40, 820);
+                canvas.style.width = Math.min(maxWidth, WIDTH) + 'px';
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // 初始化
+            updateCSSColors();
+            initGame();
+            lastTime = performance.now();
+            requestAnimationFrame(loop);
+        })();
+    </script>
+</body>
+</html>
